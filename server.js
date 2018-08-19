@@ -37,6 +37,7 @@ var sendRequest = function(ipAddress, type, action, command, options) {
                 </s:Envelope>";
 
     var postRequest = {
+        //proxy:'127.0.0.1:8888',
         host: ipAddress,
         path: url,
         port: 55000,
@@ -94,16 +95,36 @@ io.sockets.on('connection', function(socket) {
         });
     }
 
+    function getMute() {
+        sendRequest(ipAddress, 'render', 'GetMute', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
+            callback: function(data){
+                var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
+                if(match !== null) {
+                    socket.emit('muted', { muted: match[1] });
+                }
+            }
+        });
+    }
+
     (function interval() {
         getVolume();
+        getMute();
         setTimeout(interval, 1000);
     })();
 
     socket.on('action', function(action) {
-        var action = 'NRC_' + action['action'].toUpperCase() + '-ONOFF';
-        if(!sendRequest(ipAddress, 'command', 'X_SendKey', '<X_KeyEvent>' + action + '</X_KeyEvent>')) {
+        var action = action['action'].toUpperCase();
+        var actionCommand = 'NRC_' + action + '-ONOFF';
+        var isSuccess = sendRequest(ipAddress, 'command', 'X_SendKey', '<X_KeyEvent>' + actionCommand + '</X_KeyEvent>')
+        if(!isSuccess) {
             socket.emit('actionError', { error: 'internal error' });
+            return;
         }
+/*        if (["VOLUP", "VOLDOWN"].indexOf(action) > -1){
+            getVolume();
+        }else if (action === "MUTE"){
+            getMute();
+        }*/
     });
 
 });

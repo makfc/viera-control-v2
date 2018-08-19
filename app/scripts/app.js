@@ -8,8 +8,8 @@ var ipConfigButton = document.querySelector('.js-ip-config'),
     actionButtons = document.querySelectorAll('.btn-action'),
     ipModalField = document.querySelector('#ipField'),
     ipModalSave = document.querySelector('.js-ip-save'),
-    statusText = document.querySelector('.vol');
-
+    statusText = document.querySelector('.vol'),
+    isMutedText = document.querySelector('.is-muted');
 
 // Helper event function
 function addEvent(evnt, elem, func) {
@@ -59,6 +59,10 @@ function start() {
 
     socket.on('volume', function(result) {
         statusText.textContent = 'Volume - ' + result.volume;
+    });
+
+    socket.on('muted', function(result) {
+        isMutedText.textContent = 'Is muted - ' + (result.muted === '1' ? "Yes" : "No");
     });
 
     [].forEach.call(actionButtons, function(button) {
