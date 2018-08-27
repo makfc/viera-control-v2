@@ -106,6 +106,18 @@ io.sockets.on('connection', function(socket) {
         });
     }
 
+    function getTest() {
+        sendRequest(ipAddress, 'render', 'LastChange', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
+            callback: function(data){
+                console.log(data);
+                // var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
+                // if(match !== null) {
+                //     socket.emit('muted', { muted: match[1] });
+                // }
+            }
+        });
+    }
+
     (function interval() {
         getVolume();
         getMute();
@@ -113,6 +125,10 @@ io.sockets.on('connection', function(socket) {
     })();
 
     socket.on('action', function(action) {
+        if (action.action ==="TEST"){
+            getTest();
+            return;
+        }
         var action = action['action'].toUpperCase();
         var actionCommand = 'NRC_' + action + '-ONOFF';
         var isSuccess = sendRequest(ipAddress, 'command', 'X_SendKey', '<X_KeyEvent>' + actionCommand + '</X_KeyEvent>')
