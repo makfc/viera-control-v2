@@ -12,11 +12,11 @@ var server = http.createServer(app).listen(port);
 
 // Configure socket.io for WebSockets
 var io = require('socket.io')
-            .listen(server)
-            .set('log level', 1);
+    .listen(server)
+    .set('log level', 1);
 
 // A method for sending requests
-var sendRequest = function(ipAddress, type, action, command, options) {
+var sendRequest = function (ipAddress, type, action, command, options) {
     var url, urn;
     if (typeof ipAddress === 'undefined') return;
     if (type === 'command') {
@@ -25,6 +25,9 @@ var sendRequest = function(ipAddress, type, action, command, options) {
     } else if (type === 'render') {
         url = '/dmr/control_0';
         urn = 'schemas-upnp-org:service:RenderingControl:1';
+    } else if (type === 'contentDirectory') {
+        url = '/dms/control_0';
+        urn = 'schemas-upnp-org:service:ContentDirectory:1';
     }
 
     var body = "<?xml version='1.0' encoding='utf-8'?> \
@@ -53,15 +56,17 @@ var sendRequest = function(ipAddress, type, action, command, options) {
     if (options !== undefined) {
         self.callback = options.callback;
     } else {
-        self.callback = function() { console.log('Command:', command); };
+        self.callback = function () {
+            console.log('Command:', command);
+        };
     }
 
-    var req = http.request(postRequest, function(res) {
+    var req = http.request(postRequest, function (res) {
         res.setEncoding('utf8');
         res.on('data', self.callback);
     });
 
-    req.on('error', function(e) {
+    req.on('error', function (e) {
         console.log('Error ' + e);
         return false;
     });
@@ -71,25 +76,25 @@ var sendRequest = function(ipAddress, type, action, command, options) {
 };
 
 // Define WebSockets connections
-io.sockets.on('connection', function(socket) {
+io.sockets.on('connection', function (socket) {
 
     var ipAddress;
-    socket.on('setIpAddress', function(ip) {
+    socket.on('setIpAddress', function (ip) {
         var ipRegExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
-        if(ipRegExp.test(ip)) {
+        if (ipRegExp.test(ip)) {
             ipAddress = ip;
-            socket.emit('ipAddressResult', { ip: ipAddress });
+            socket.emit('ipAddressResult', {ip: ipAddress});
         } else {
-            socket.emit('ipAddressResult', { error: 'Invalid IP address' });
+            socket.emit('ipAddressResult', {error: 'Invalid IP address'});
         }
     });
 
     function getVolume() {
         sendRequest(ipAddress, 'render', 'GetVolume', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
-            callback: function(data){
+            callback: function (data) {
                 var match = /<CurrentVolume>(\d*)<\/CurrentVolume>/gm.exec(data);
-                if(match !== null) {
-                    socket.emit('volume', { volume: match[1] });
+                if (match !== null) {
+                    socket.emit('volume', {volume: match[1]});
                 }
             }
         });
@@ -97,10 +102,10 @@ io.sockets.on('connection', function(socket) {
 
     function getMute() {
         sendRequest(ipAddress, 'render', 'GetMute', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
-            callback: function(data){
+            callback: function (data) {
                 var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
-                if(match !== null) {
-                    socket.emit('muted', { muted: match[1] });
+                if (match !== null) {
+                    socket.emit('muted', {muted: match[1]});
                 }
             }
         });
@@ -108,7 +113,7 @@ io.sockets.on('connection', function(socket) {
 
     function getTest() {
         sendRequest(ipAddress, 'render', 'LastChange', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
-            callback: function(data){
+            callback: function (data) {
                 console.log(data);
                 // var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
                 // if(match !== null) {
@@ -124,23 +129,43 @@ io.sockets.on('connection', function(socket) {
         setTimeout(interval, 1000);
     })();
 
-    socket.on('action', function(action) {
-        if (action.action ==="TEST"){
+    socket.on('action', function (action) {
+        if (action.action === "TEST") {
             getTest();
             return;
         }
         var action = action['action'].toUpperCase();
         var actionCommand = 'NRC_' + action + '-ONOFF';
         var isSuccess = sendRequest(ipAddress, 'command', 'X_SendKey', '<X_KeyEvent>' + actionCommand + '</X_KeyEvent>')
-        if(!isSuccess) {
-            socket.emit('actionError', { error: 'internal error' });
+        if (!isSuccess) {
+            socket.emit('actionError', {error: 'internal error'});
             return;
         }
-/*        if (["VOLUP", "VOLDOWN"].indexOf(action) > -1){
-            getVolume();
-        }else if (action === "MUTE"){
-            getMute();
-        }*/
+        /*        if (["VOLUP", "VOLDOWN"].indexOf(action) > -1){
+                    getVolume();
+                }else if (action === "MUTE"){
+                    getMute();
+                }*/
     });
-
 });
+
+function browse() {
+    sendRequest('192.168.1.10', 'contentDirectory', 'Browse',
+        '<ObjectID>0</ObjectID>' +
+        '<BrowseFlag>BrowseDirectChildren</BrowseFlag>' +
+        '<Filter>*</Filter>' +
+        '<StartingIndex>0</StartingIndex>' +
+        '<RequestedCount>0</RequestedCount>' +
+        '<SortCriteria></SortCriteria>', {
+            callback: function (data) {
+                //console.log(data);
+                var match = /<NumberReturned>(\d*)<\/NumberReturned>/gm.exec(data);
+                if (match !== null) {
+                    console.log('NumberReturned: ' + match[1]);
+                    //socket.emit('muted', { muted: match[1] });
+                }
+            }
+        });
+}
+
+//browse();
