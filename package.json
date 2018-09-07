@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "dependencies": {
     "connect": "2.*",
-    "socket.io": "0.9.*"
+    "socket.io": "0.9.*",
+      "node-schedule": "latest"
   },
   "devDependencies": {
     "grunt": "~0.4.1",

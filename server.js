@@ -80,6 +80,7 @@ io.sockets.on('connection', function (socket) {
 
     var ipAddress;
     socket.on('setIpAddress', function (ip) {
+        console.log('setIpAddress');
         var ipRegExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
         if (ipRegExp.test(ip)) {
             ipAddress = ip;
@@ -112,7 +113,7 @@ io.sockets.on('connection', function (socket) {
     }
 
     function getTest() {
-        sendRequest(ipAddress, 'render', 'LastChange', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
+        sendRequest(ipAddress, 'command', 'X_SendKey', '<X_KeyEvent>NRC_MUTE-OFF</X_KeyEvent>', {
             callback: function (data) {
                 console.log(data);
                 // var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
@@ -149,7 +150,7 @@ io.sockets.on('connection', function (socket) {
     });
 });
 
-function browse() {
+function browse(callback) {
     sendRequest('192.168.1.10', 'contentDirectory', 'Browse',
         '<ObjectID>0</ObjectID>' +
         '<BrowseFlag>BrowseDirectChildren</BrowseFlag>' +
@@ -162,10 +163,53 @@ function browse() {
                 var match = /<NumberReturned>(\d*)<\/NumberReturned>/gm.exec(data);
                 if (match !== null) {
                     console.log('NumberReturned: ' + match[1]);
+                    callback(Number(match[1]) === 1);
                     //socket.emit('muted', { muted: match[1] });
                 }
             }
         });
 }
 
-//browse();
+function getMute(callback) {
+    sendRequest('192.168.1.10', 'render', 'GetMute', '<InstanceID>0</InstanceID><Channel>Master</Channel>', {
+        callback: function (data) {
+            var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
+            if (match !== null) {
+                console.log('GetMute: ' + match[1]);
+                callback(Number(match[1]) === 1);
+            }
+        }
+    });
+}
+
+function setMute(state) {
+    getMute(function (currentState) {
+        if (currentState === state)
+            return;
+        sendRequest('192.168.1.10', 'command', 'X_SendKey', '<X_KeyEvent>NRC_MUTE-ONOFF</X_KeyEvent>', {
+            callback: function (data) {
+                var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
+                if (match !== null) {
+                    console.log('SetMute: ' + match[1]);
+                }
+            }
+        });
+    });
+}
+
+var schedule = require('node-schedule');
+
+var timetable = [
+    {time:{hour:18, minute:28, second:35 }, state: true},
+    {time:{hour:18, minute:29, second:50 }, state: false},
+    {time:{hour:19, minute:28, second:0 }, state: true},
+    {time:{hour:19, minute:30, second:0 }, state: false},
+    {time:{hour:0, minute:56, second:0 }, state: true},
+    {time:{hour:1, minute:28, second:0 }, state: true}
+];
+timetable.forEach(function (value) {
+    schedule.scheduleJob(value.time, function() {
+        console.log('Job mute: '+value.state);
+        setMute(value.state);
+    });
+});
