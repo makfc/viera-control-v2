@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "dependencies": {
     "connect": "2.*",
-    "socket.io": "0.9.*",
-      "node-schedule": "latest"
+    "node-schedule": "latest",
+    "node-upnp-subscription": "^1.0.6",
+    "socket.io": "0.9.*"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
