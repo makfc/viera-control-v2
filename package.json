@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "dependencies": {
     "connect": "2.*",
+    "console-stamp": "^0.2.6",
     "node-schedule": "latest",
     "node-upnp-subscription": "^1.0.6",
     "socket.io": "0.9.*"

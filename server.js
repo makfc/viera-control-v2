@@ -1,5 +1,8 @@
 'use strict';
 
+require('console-stamp')(console, 'ddd yyyy-mm-dd  HH:MM:ss');
+
+
 var connect = require('connect'),
     http = require('http'),
     port = 3000,

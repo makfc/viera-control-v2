@@ -92,7 +92,7 @@ const app = {
         to.style.display = 'block';
     },
     showIpConfig: () => {
-        this.switchView(appView, configView);
+        app.switchView(appView, configView);
         ipModalField.value = localStorage.getItem('ipAddress');
     },
     start: () => {
