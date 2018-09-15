@@ -153,7 +153,8 @@ io.sockets.on('connection', function (socket) {
     });
 });
 
-function browse(callback) {
+// Return true when watching digital TV
+function browse() {
     sendRequest('192.168.1.10', 'contentDirectory', 'Browse',
         '<ObjectID>0</ObjectID>' +
         '<BrowseFlag>BrowseDirectChildren</BrowseFlag>' +
@@ -166,7 +167,7 @@ function browse(callback) {
                 var match = /<NumberReturned>(\d*)<\/NumberReturned>/gm.exec(data);
                 if (match !== null) {
                     console.log('NumberReturned: ' + match[1]);
-                    callback(Number(match[1]) === 1);
+                    return (Number(match[1]) === 1);
                     //socket.emit('muted', { muted: match[1] });
                 }
             }
@@ -213,6 +214,7 @@ var timetable = [
 timetable.forEach(function (value) {
     schedule.scheduleJob(value.time, function() {
         console.log('Job mute: '+value.state);
-        setMute(value.state);
+        if(browse())
+            setMute(value.state);
     });
 });
