@@ -76,6 +76,7 @@ var sendRequest = function (ipAddress, type, action, command, options) {
 
     req.write(body);
     req.end();
+    return true;
 };
 
 // Define WebSockets connections
@@ -130,6 +131,8 @@ io.sockets.on('connection', function (socket) {
     (function interval() {
         getVolume();
         getMute();
+        if(socket.disconnected)
+            return;
         setTimeout(interval, 1000);
     })();
 
