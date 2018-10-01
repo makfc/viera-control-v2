@@ -131,7 +131,7 @@ io.sockets.on('connection', function (socket) {
     (function interval() {
         getVolume();
         getMute();
-        if(socket.disconnected)
+        if (socket.disconnected)
             return;
         setTimeout(interval, 1000);
     })();
@@ -156,8 +156,8 @@ io.sockets.on('connection', function (socket) {
     });
 });
 
-// Return true when watching digital TV
-function browse() {
+// Return true when current source is digital TV
+function browse(callback) {
     sendRequest('192.168.1.10', 'contentDirectory', 'Browse',
         '<ObjectID>0</ObjectID>' +
         '<BrowseFlag>BrowseDirectChildren</BrowseFlag>' +
@@ -169,8 +169,8 @@ function browse() {
                 //console.log(data);
                 var match = /<NumberReturned>(\d*)<\/NumberReturned>/gm.exec(data);
                 if (match !== null) {
-                    console.log('NumberReturned: ' + match[1]);
-                    return (Number(match[1]) === 1);
+                    console.log('Browse(NumberReturned: ' + match[1] + ')');
+                    callback(Number(match[1]) === 1);
                     //socket.emit('muted', { muted: match[1] });
                 }
             }
@@ -182,22 +182,26 @@ function getMute(callback) {
         callback: function (data) {
             var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
             if (match !== null) {
-                console.log('GetMute: ' + match[1]);
+                console.log('GetMute: ' + (Number(match[1]) === 1 ? '' : 'not') + 'muted');
                 callback(Number(match[1]) === 1);
             }
         }
     });
 }
 
-function setMute(state) {
+function setMute(state, callback) {
     getMute(function (currentState) {
-        if (currentState === state)
+        if (currentState === state) {
+            console.log('No action taken (currentState === state)');
+            callback();
             return;
+        }
         sendRequest('192.168.1.10', 'command', 'X_SendKey', '<X_KeyEvent>NRC_MUTE-ONOFF</X_KeyEvent>', {
             callback: function (data) {
                 var match = /<CurrentMute>(\d*)<\/CurrentMute>/gm.exec(data);
                 if (match !== null) {
                     console.log('SetMute: ' + match[1]);
+                    callback();
                 }
             }
         });
@@ -207,17 +211,25 @@ function setMute(state) {
 var schedule = require('node-schedule');
 
 var timetable = [
-    {time:{hour:18, minute:28, second:35 }, state: true},
-    {time:{hour:18, minute:29, second:50 }, state: false},
-    {time:{hour:19, minute:28, second:0 }, state: true},
-    {time:{hour:19, minute:30, second:0 }, state: false},
-    {time:{hour:0, minute:56, second:0 }, state: true},
-    {time:{hour:1, minute:28, second:0 }, state: true}
+    {time: {hour: 18, minute: 28, second: 35}, state: true},
+    {time: {hour: 18, minute: 29, second: 50}, state: false},
+    {time: {hour: 19, minute: 28, second: 0}, state: true},
+    {time: {hour: 19, minute: 30, second: 0}, state: false},
+    {time: {hour: 0, minute: 56, second: 0}, state: true},
+    {time: {hour: 1, minute: 28, second: 0}, state: true}
 ];
-timetable.forEach(function (value) {
-    schedule.scheduleJob(value.time, function() {
-        console.log('Job mute: '+value.state);
-        if(browse())
-            setMute(value.state);
+timetable.forEach((value) => {
+    schedule.scheduleJob(value.time, () => {
+        console.log('Job action: ' + (value.state ? 'Mute' : 'Unmute'));
+        browse((result) => {
+            if (!result) {
+                console.log('No action taken (current source is not digital TV)');
+                console.log('----------------------------------------');
+                return;
+            }
+            setMute(value.state, () => {
+                console.log('----------------------------------------');
+            });
+        });
     });
 });
